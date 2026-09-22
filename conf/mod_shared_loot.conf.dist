@@ -1,0 +1,76 @@
+#
+# mod-shared-loot configuration (Kanboard #799)
+#
+# READ THIS FIRST - what this module actually does:
+#
+# The ticket's ideal is "no round robin / need-greed / master loot - everyone in the group
+# (players AND bots) can loot EVERY item off a corpse, and taking it does not remove it for
+# the others (full duplication), full gold to everyone".
+#
+# On THIS fork, that exact behavior already exists as a CORE feature, independent of this
+# module: `Loot.Everyone.Enable` in worldserver.conf (default 1). When it is on, every
+# eligible group member gets his own copy of a creature corpse's (or group-loot-rule chest's)
+# loot and full gold, no rolls, no round robin, no master loot - which is the actual "shared
+# loot" outcome. This module cannot enable/disable that core option (it lives in
+# worldserver.conf, outside this module's own conf).
+#
+# This module's job is narrower and purely a fallback/insurance layer:
+#   - It forces a group's loot method to FREE_FOR_ALL, so that whatever the core
+#     Loot.Everyone feature does NOT cover (it is off, or a group's persisted DB loot
+#     method has not yet been re-touched since a restart) still never shows a
+#     need/greed/round-robin/master-loot roll popup.
+#   - It logs one startup warning if this module is enabled while the core
+#     Loot.Everyone.Enable option is off, since in that case true per-player loot
+#     duplication + full shared gold will NOT happen no matter what this module does.
+#
+# Known limitations (see README.md "Current capability vs. limitations" for the full list):
+#   - Personal loot (skinning, pickpocketing, gathering/herbalism/mining, fishing, most
+#     non-chest gameobjects, item containers) is UNCHANGED by this module or by
+#     Loot.Everyone - it stays single-recipient. Duplicating those would need core LootMgr
+#     changes, explicitly out of scope for this module.
+#   - This module changes the group's LOOT METHOD (Group::SetLootMethod), not the loot
+#     itself - it never creates, duplicates, or removes an item or gold amount.
+#   - A group loaded straight from the DB at world boot keeps its persisted loot method
+#     until a member of it next logs in (PlayerScript::OnPlayerLogin re-applies FFA) or the
+#     group is created/joined again - there is no clean module-level hook for "group loaded
+#     from DB" on this fork.
+#
+# Risk: this is a wave-1, opt-in module. Default is OFF (SharedLoot.Enable = 0).
+#
+
+[worldserver]
+
+#
+#    SharedLoot.Enable
+#        Description: Master switch for this module. Keep at 0 unless you specifically want
+#                     the Free-For-All enforcement described above (most of the ticket's
+#                     outcome already comes from the core Loot.Everyone.Enable option, which
+#                     this module does not control).
+#        Default:     0 - (Disabled)
+#                     1 - (Enabled)
+#
+
+SharedLoot.Enable = 0
+
+#
+#    SharedLoot.ForceFreeForAll
+#        Description: When SharedLoot.Enable = 1, force every group's loot method to
+#                     FREE_FOR_ALL on creation, on every member join, and on player login
+#                     (see SharedLoot.cpp for exactly which hooks). No effect if
+#                     SharedLoot.Enable = 0.
+#        Default:     1 - (Enabled)
+#                     0 - (Disabled)
+#
+
+SharedLoot.ForceFreeForAll = 1
+
+#
+#    SharedLoot.IncludeRaid
+#        Description: Also force Free-For-All on raid groups (not just parties). If 0, raid
+#                     groups keep whatever loot method they already have; party groups are
+#                     still forced to FFA.
+#        Default:     1 - (Enabled)
+#                     0 - (Disabled)
+#
+
+SharedLoot.IncludeRaid = 1
